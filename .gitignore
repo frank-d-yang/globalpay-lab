@@ -1,0 +1,14 @@
+.idea/
+.vscode/
+*.iml
+backend/target/
+frontend/node_modules/
+frontend/dist/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+test-results/
+.DS_Store
+Thumbs.db
