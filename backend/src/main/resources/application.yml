@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: globalpay-lab-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/globalpay}
+    username: ${DB_USERNAME:globalpay}
+    password: ${DB_PASSWORD:globalpay_dev_only}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true

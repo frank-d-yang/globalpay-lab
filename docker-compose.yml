@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: globalpay
       POSTGRES_PASSWORD: globalpay_dev_only
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - globalpay_postgres_data:/var/lib/postgresql/data
     healthcheck:
