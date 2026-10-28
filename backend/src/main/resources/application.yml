@@ -10,3 +10,7 @@ spring:
 
   flyway:
     enabled: true
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-handlers-package: com.globalpay.lab.ledger.infrastructure

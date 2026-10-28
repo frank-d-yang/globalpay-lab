@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC
+        "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.globalpay.lab.ledger.infrastructure.LedgerAccountMapper">
+    <resultMap id="LedgerAccountResultMap"
+               type="com.globalpay.lab.ledger.domain.LedgerAccount">
+        <constructor>
+            <idArg column="id" javaType="java.util.UUID"/>
+            <arg column="owner_type"
+                 javaType="com.globalpay.lab.ledger.domain.OwnerType"/>
+            <arg column="owner_id" javaType="java.lang.String"/>
+            <arg column="currency" javaType="java.util.Currency"/>
+            <arg column="account_type"
+                 javaType="com.globalpay.lab.ledger.domain.AccountType"/>
+            <arg column="status"
+                 javaType="com.globalpay.lab.ledger.domain.AccountStatus"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insert"
+            parameterType="com.globalpay.lab.ledger.domain.LedgerAccount">
+        INSERT INTO ledger_account (
+        id,
+        owner_type,
+        owner_id,
+        currency,
+        account_type,
+        status,
+        created_at
+        )
+        VALUES (
+        #{id},
+        #{ownerType},
+        #{ownerId},
+        #{currency},
+        #{accountType},
+        #{status},
+        #{createdAt}
+        )
+    </insert>
+
+    <select id="findById" resultMap="LedgerAccountResultMap">
+        SELECT *
+        FROM ledger_account
+        WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultMap="LedgerAccountResultMap">
+        SELECT *
+        FROM ledger_account
+        ORDER BY created_at DESC, id
+    </select>
+
+</mapper>
