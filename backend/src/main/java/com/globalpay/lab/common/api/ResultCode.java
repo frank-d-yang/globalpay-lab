@@ -7,7 +7,8 @@ public enum ResultCode {
     SUCCESS(HttpStatus.OK, "Success"),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "Invalid request parameters"),
     ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "Ledger account not found"),
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error"),
+    INVALID_JOURNAL_STATUS(HttpStatus.CONFLICT, "Invalid journal status");
 
     private final HttpStatus status;
     private final String message;

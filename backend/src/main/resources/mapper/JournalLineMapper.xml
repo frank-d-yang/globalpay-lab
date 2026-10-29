@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.globalpay.lab.ledger.infrastructure.JournalLineMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO journal_line (
+        id,
+        journal_entry_id,
+        ledger_account_id,
+        side,
+        amount
+        )
+        VALUES
+        <foreach collection="lines" item="line" separator=",">
+        (
+        #{line.id, typeHandler=com.globalpay.lab.ledger.infrastructure.UUIDTypeHandler},
+        #{journalEntryId, typeHandler=com.globalpay.lab.ledger.infrastructure.UUIDTypeHandler},
+        #{line.ledgerAccountId, typeHandler=com.globalpay.lab.ledger.infrastructure.UUIDTypeHandler},
+        #{line.side},
+        #{line.amount}
+        )
+        </foreach>
+    </insert>
+
+
+    <select id="findByJournalEntryId"
+            resultType="com.globalpay.lab.ledger.domain.JournalLine">
+
+        SELECT id, ledger_account_id, side, amount
+        FROM journal_line
+        WHERE journal_entry_id = #{
+        journalEntryId,
+        typeHandler=com.globalpay.lab.ledger.infrastructure.UUIDTypeHandler
+        }
+    </select>
+
+</mapper>
