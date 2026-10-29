@@ -93,3 +93,11 @@ compliance.
 ![img.png](img/img.png)
 ![img_1.png](img/img_1.png)
 ![img_2.png](img/img_2.png)
+后续的测试策略
+![测试策略](img/img_3.png)
+
+后续CI搭建
+![CI工作流](img/CI%20Workflow.png)
+
+# todo
+![并发问题](img/jounralEntry的并发问题.png)

@@ -18,7 +18,11 @@ public record Response<T>(
        return new Response<>(ResultCode.SUCCESS.getCode(), ResultCode.SUCCESS.getMessage(), null);
     }
 
-    public static<T> Response<Void> error(ResultCode resultCode) {
+    public static Response<Void> error(ResultCode resultCode) {
        return new Response<>(resultCode.getCode(), resultCode.getMessage(), null);
+    }
+
+    public static Response<Void> error(String message) {
+        return new Response<>(500, message, null);
     }
 }

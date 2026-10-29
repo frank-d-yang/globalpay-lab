@@ -35,6 +35,13 @@ public class GlobalExceptionHandler {
         return Response.error(ResultCode.BAD_REQUEST);
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public Response<Void> handleIllgalStateException(IllegalStateException ex) {
+
+        return Response.error(ex.getMessage());
+    }
+
+
     @ExceptionHandler(Exception.class)
     public Response<Void> handleUnexpectedException(
             Exception ex) {
