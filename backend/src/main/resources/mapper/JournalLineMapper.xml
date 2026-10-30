@@ -25,7 +25,6 @@
         </foreach>
     </insert>
 
-
     <select id="findByJournalEntryId"
             resultType="com.globalpay.lab.ledger.domain.JournalLine">
 
@@ -35,6 +34,28 @@
         journalEntryId,
         typeHandler=com.globalpay.lab.ledger.infrastructure.UUIDTypeHandler
         }
+    </select>
+
+    <select id="findHistoryByAccountId"
+            resultType="com.globalpay.lab.ledger.application.query.JournalHistoryRecord">
+        SELECT
+        je.id AS journal_id,
+        jl.id AS line_id,
+        jl.side,
+        jl.amount,
+        je.posted_at
+        FROM journal_line jl
+        JOIN journal_entry je
+        ON jl.journal_entry_id = je.id
+        WHERE jl.ledger_account_id = #{
+        accountId,
+        typeHandler=com.globalpay.lab.ledger.infrastructure.UUIDTypeHandler
+    }
+        AND je.status = 'POSTED'
+        ORDER BY
+        je.posted_at DESC,
+        je.id DESC,
+        jl.id DESC
     </select>
 
 </mapper>

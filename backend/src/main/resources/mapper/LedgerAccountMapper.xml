@@ -54,4 +54,24 @@
         ORDER BY created_at DESC, id
     </select>
 
+
+    <select id="sumDebitMinusCredit"
+            resultType="java.math.BigDecimal">
+        SELECT COALESCE(
+        SUM(
+        CASE
+        WHEN jl.side = 'DEBIT' THEN jl.amount
+        ELSE -jl.amount
+        END
+        ),
+        0
+        )
+        FROM journal_line jl
+        JOIN journal_entry je
+        ON jl.journal_entry_id = je.id
+        WHERE jl.ledger_account_id = #{id}
+        AND je.status = 'POSTED'
+    </select>
+
+
 </mapper>

@@ -2,13 +2,17 @@ package com.globalpay.lab.ledger.api;
 
 import com.globalpay.lab.common.api.Response;
 import com.globalpay.lab.ledger.api.dto.CreateLedgerAccountRequest;
+import com.globalpay.lab.ledger.api.dto.JournalHistoryResponse;
 import com.globalpay.lab.ledger.api.dto.LedgerAccountResponse;
+import com.globalpay.lab.ledger.api.dto.LedgerBalanceResponse;
 import com.globalpay.lab.ledger.application.LedgerAccountService;
+import com.globalpay.lab.ledger.application.query.JournalHistoryRecord;
 import com.globalpay.lab.ledger.domain.LedgerAccount;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
@@ -46,5 +50,34 @@ public class LedgerAccountController {
                 .map(LedgerAccountResponse::from)
                 .toList();
         return Response.success(list);
+    }
+
+    @GetMapping("/{id}/balance")
+    public Response<LedgerBalanceResponse> getBalance(@PathVariable UUID id) {
+        LedgerAccount account = ledgerAccountService.getAccount(id);
+        BigDecimal balance = ledgerAccountService.getBalance(id);
+
+        return Response.success(new LedgerBalanceResponse(
+                account.getId(),
+                account.getCurrency().getCurrencyCode(),
+                balance
+        ));
+    }
+
+    @GetMapping("/{id}/journals")
+    public Response<JournalHistoryResponse> getJournalHistory(
+            @PathVariable UUID id) {
+
+        LedgerAccount account = ledgerAccountService.getAccount(id);
+
+        List<JournalHistoryRecord> entries =
+                ledgerAccountService.getJournalHistory(id);
+
+        return Response.success(new JournalHistoryResponse(
+                account.getId(),
+                account.getCurrency().getCurrencyCode(),
+                account.getAccountType(),
+                entries
+        ));
     }
 }
