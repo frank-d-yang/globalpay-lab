@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Testcontainers
-@Transactional
 public class LedgerAccountMapperTest {
     @Container
     @ServiceConnection
