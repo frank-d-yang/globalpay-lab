@@ -3,14 +3,19 @@ package com.globalpay.lab.ledger.infrastructure;
 import com.globalpay.lab.ledger.application.query.JournalHistoryRecord;
 import com.globalpay.lab.ledger.domain.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.*;
 
@@ -33,6 +38,9 @@ class JournalLineMapperTest {
 
     @Autowired
     private LedgerAccountMapper ledgerAccountMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void shouldInsertJournalLine() {
@@ -383,6 +391,56 @@ class JournalLineMapperTest {
     }
 
 
+    @ParameterizedTest
+    @ValueSource(strings = {"0.00", "-1.00"})
+    void shouldRejectNonPositiveAmountAtDatabaseLevel(String amount) {
+
+        // 1. Prepare valid account and journal
+        LedgerAccount account = createAccount();
+
+        JournalEntry journal = new JournalEntry(
+                UUID.randomUUID(),
+                Currency.getInstance("AUD"),
+                Instant.now()
+        );
+
+        journalEntryMapper.insert(journal);
+
+        // 2. Attempt to insert invalid amount
+        DataIntegrityViolationException exception = assertThrows(
+                DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update("""
+                INSERT INTO journal_line (
+                    id,
+                    journal_entry_id,
+                    ledger_account_id,
+                    side,
+                    amount
+                )
+                VALUES (?, ?, ?, 'DEBIT', ?)
+                """,
+                        UUID.randomUUID(),
+                        journal.getId(),
+                        account.getId(),
+                        new BigDecimal(amount)
+                )
+        );
+
+        // 3. Verify PostgreSQL CHECK constraint violation
+        SQLException cause =
+                (SQLException) exception.getMostSpecificCause();
+
+        assertEquals("23514", cause.getSQLState());
+
+        // 4. Verify no invalid record was inserted
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM journal_line WHERE journal_entry_id = ?",
+                Integer.class,
+                journal.getId()
+        );
+
+        assertEquals(0, count);
+    }
 
 }
 
