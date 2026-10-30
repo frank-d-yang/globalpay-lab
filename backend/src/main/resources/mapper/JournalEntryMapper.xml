@@ -55,10 +55,8 @@
     <update id="markPosted">
         UPDATE journal_entry
         SET status = 'POSTED',
-        posted_at = clock_timestamp()
+        posted_at = GREATEST(clock_timestamp(), created_at)
         WHERE id = #{id, typeHandler=com.globalpay.lab.ledger.infrastructure.UUIDTypeHandler}
         AND status = 'DRAFT'
     </update>
-
-
 </mapper>
