@@ -1,5 +1,6 @@
 package com.globalpay.lab.ledger.infrastructure;
 
+import com.globalpay.lab.ledger.application.query.JournalHistoryRecord;
 import com.globalpay.lab.ledger.domain.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,8 +14,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Testcontainers
@@ -161,6 +161,228 @@ class JournalLineMapperTest {
                         new BigDecimal("100.00")) == 0
         ));
     }
+
+
+    @Test
+    void shouldReturnEmptyHistoryForEmptyOrDraftAccount() {
+
+        LedgerAccount account = createAccount();
+        LedgerAccount offset = createAccount();
+
+        assertTrue(journalLineMapper
+                .findHistoryByAccountId(account.getId())
+                .isEmpty());
+
+        // Create DRAFT only
+        createJournal(
+                account.getId(),
+                offset.getId(),
+                EntrySide.DEBIT,
+                "100.00",
+                false
+        );
+
+        assertTrue(journalLineMapper
+                .findHistoryByAccountId(account.getId())
+                .isEmpty());
+    }
+
+    @Test
+    void shouldReturnPostedHistoryWithCorrectFieldsAndOrder() {
+
+        LedgerAccount account = createAccount();
+        LedgerAccount offset = createAccount();
+
+        JournalEntry first = createJournal(
+                account.getId(), offset.getId(),
+                EntrySide.DEBIT, "100.12345678", true
+        );
+
+        JournalEntry second = createJournal(
+                account.getId(), offset.getId(),
+                EntrySide.CREDIT, "20.00000001", true
+        );
+
+        List<JournalHistoryRecord> history =
+                journalLineMapper.findHistoryByAccountId(account.getId());
+
+        assertEquals(2, history.size());
+
+        // Most recent posting first
+        assertFalse(
+                history.get(0).postedAt()
+                        .isBefore(history.get(1).postedAt())
+        );
+
+        JournalHistoryRecord debit = history.stream()
+                .filter(r -> r.journalId().equals(first.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(first.getLines().get(0).getId(), debit.lineId());
+        assertEquals(EntrySide.DEBIT, debit.side());
+        assertEquals(
+                0,
+                new BigDecimal("100.12345678")
+                        .compareTo(debit.amount())
+        );
+        assertNotNull(debit.postedAt());
+
+        JournalHistoryRecord credit = history.stream()
+                .filter(r -> r.journalId().equals(second.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(second.getLines().get(0).getId(), credit.lineId());
+        assertEquals(EntrySide.CREDIT, credit.side());
+        assertEquals(
+                0,
+                new BigDecimal("20.00000001")
+                        .compareTo(credit.amount())
+        );
+        assertNotNull(credit.postedAt());
+    }
+
+    @Test
+    void shouldOnlyReturnHistoryForRequestedAccount() {
+
+        LedgerAccount accountA = createAccount();
+        LedgerAccount accountB = createAccount();
+        LedgerAccount offset = createAccount();
+
+        JournalEntry journalA = createJournal(
+                accountA.getId(), offset.getId(),
+                EntrySide.DEBIT, "100.00", true
+        );
+
+        createJournal(
+                accountB.getId(), offset.getId(),
+                EntrySide.DEBIT, "200.00", true
+        );
+
+        List<JournalHistoryRecord> history =
+                journalLineMapper.findHistoryByAccountId(accountA.getId());
+
+        assertEquals(1, history.size());
+        assertEquals(journalA.getId(), history.get(0).journalId());
+    }
+
+    @Test
+    void shouldReturnDistinctLinesFromSameJournal() {
+
+        LedgerAccount account = createAccount();
+        LedgerAccount offset = createAccount();
+
+        JournalEntry journal = new JournalEntry(
+                UUID.randomUUID(),
+                Currency.getInstance("AUD"),
+                Instant.now().minusSeconds(60)
+        );
+
+        JournalLine first = new JournalLine(
+                UUID.randomUUID(), account.getId(),
+                EntrySide.DEBIT, new BigDecimal("10.00")
+        );
+
+        JournalLine second = new JournalLine(
+                UUID.randomUUID(), account.getId(),
+                EntrySide.DEBIT, new BigDecimal("20.00")
+        );
+
+        JournalLine counterpart = new JournalLine(
+                UUID.randomUUID(), offset.getId(),
+                EntrySide.CREDIT, new BigDecimal("30.00")
+        );
+
+        journal.addLine(first);
+        journal.addLine(second);
+        journal.addLine(counterpart);
+
+        journalEntryMapper.insert(journal);
+        journalLineMapper.insertBatch(journal.getId(), journal.getLines());
+        assertEquals(1, journalEntryMapper.markPosted(journal.getId()));
+
+        List<JournalHistoryRecord> history =
+                journalLineMapper.findHistoryByAccountId(account.getId());
+
+        assertEquals(2, history.size());
+
+        assertTrue(history.stream()
+                .allMatch(r -> r.journalId().equals(journal.getId())));
+
+        Set<UUID> lineIds = new HashSet<>();
+        for (JournalHistoryRecord record : history) {
+            lineIds.add(record.lineId());
+        }
+
+        assertEquals(Set.of(first.getId(), second.getId()), lineIds);
+    }
+
+
+    private LedgerAccount createAccount() {
+
+        LedgerAccount account = new LedgerAccount(
+                UUID.randomUUID(),
+                OwnerType.PLATFORM,
+                "test-" + UUID.randomUUID(),
+                Currency.getInstance("AUD"),
+                AccountType.ASSET,
+                AccountStatus.ACTIVE,
+                Instant.now()
+        );
+
+        ledgerAccountMapper.insert(account);
+
+        return account;
+    }
+
+    private JournalEntry createJournal(
+            UUID accountId,
+            UUID offsetAccountId,
+            EntrySide side,
+            String amount,
+            boolean posted) {
+
+        JournalEntry journal = new JournalEntry(
+                UUID.randomUUID(),
+                Currency.getInstance("AUD"),
+                Instant.now().minusSeconds(60)
+        );
+
+        EntrySide opposite =
+                side == EntrySide.DEBIT
+                        ? EntrySide.CREDIT
+                        : EntrySide.DEBIT;
+
+        journal.addLine(new JournalLine(
+                UUID.randomUUID(),
+                accountId,
+                side,
+                new BigDecimal(amount)
+        ));
+
+        journal.addLine(new JournalLine(
+                UUID.randomUUID(),
+                offsetAccountId,
+                opposite,
+                new BigDecimal(amount)
+        ));
+
+        journalEntryMapper.insert(journal);
+
+        journalLineMapper.insertBatch(
+                journal.getId(),
+                journal.getLines()
+        );
+
+        if (posted) {
+            assertEquals(1, journalEntryMapper.markPosted(journal.getId()));
+        }
+
+        return journal;
+    }
+
+
 
 }
 

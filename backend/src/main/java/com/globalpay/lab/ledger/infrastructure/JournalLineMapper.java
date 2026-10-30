@@ -1,5 +1,6 @@
 package com.globalpay.lab.ledger.infrastructure;
 
+import com.globalpay.lab.ledger.application.query.JournalHistoryRecord;
 import com.globalpay.lab.ledger.domain.JournalLine;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -16,5 +17,9 @@ public interface JournalLineMapper {
 
     List<JournalLine> findByJournalEntryId(
             @Param("journalEntryId") UUID journalEntryId
+    );
+
+    List<JournalHistoryRecord> findHistoryByAccountId(
+            @Param("accountId") UUID accountId
     );
 }

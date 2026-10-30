@@ -4,6 +4,7 @@ import com.globalpay.lab.ledger.domain.LedgerAccount;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,5 +16,7 @@ public interface LedgerAccountMapper {
     LedgerAccount findById(@Param("id") UUID id);
 
     List<LedgerAccount> findAll();
+
+    BigDecimal sumDebitMinusCredit(@Param("id") UUID id);
 
 }

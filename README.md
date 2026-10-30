@@ -101,3 +101,6 @@ compliance.
 
 # todo
 ![并发问题](img/jounralEntry的并发问题.png)
+
+分层测试的意义
+![分层测试](img/分层测试.png)
