@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.globalpay.lab.merchant.infrastructure.MerchantMapper">
+
+    <insert id="insert">
+        INSERT INTO merchant (
+        id,
+        display_name,
+        status,
+        created_at
+        )
+        VALUES (
+        #{id},
+        #{displayName},
+        #{status},
+        #{createdAt}
+        )
+    </insert>
+
+    <select id="findById"
+            resultType="com.globalpay.lab.merchant.domain.Merchant">
+        SELECT id, display_name, status, created_at
+        FROM merchant
+        WHERE id = #{id}
+    </select>
+
+</mapper>
