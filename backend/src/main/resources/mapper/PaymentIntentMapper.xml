@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.globalpay.lab.payment.infrastructure.PaymentIntentMapper">
+
+    <insert id="insert">
+        INSERT INTO payment_intent (
+        id,
+        merchant_id,
+        amount,
+        currency,
+        idempotency_key,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        )
+        VALUES (
+        #{id},
+        #{merchantId},
+        #{amount},
+        #{currency},
+        #{idempotencyKey},
+        #{status},
+        #{providerReference},
+        #{createdAt},
+        #{updatedAt}
+        )
+    </insert>
+
+    <select id="findById"
+            resultType="com.globalpay.lab.payment.domain.PaymentIntent">
+        SELECT
+        id,
+        merchant_id,
+        amount,
+        currency,
+        idempotency_key,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        FROM payment_intent
+        WHERE id = #{id}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE payment_intent
+        SET
+        status = #{payment.status},
+        provider_reference = #{payment.providerReference},
+        updated_at = #{payment.updatedAt}
+        WHERE id = #{payment.id}
+        AND status = #{expectedStatus}
+    </update>
+
+</mapper>
