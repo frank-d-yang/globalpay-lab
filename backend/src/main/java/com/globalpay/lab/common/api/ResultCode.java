@@ -10,10 +10,11 @@ public enum ResultCode {
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error"),
     INVALID_JOURNAL_STATUS(HttpStatus.CONFLICT, "Invalid journal status"),
 
-    MERCHANT_NOT_FOUND(
-            HttpStatus.NOT_FOUND,
-            "Merchant not found"
-    );
+    MERCHANT_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant not found"),
+
+    PAYMENT_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Idempotency key reused with different payment parameters"),
+
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Payment not found");
 
     private final HttpStatus status;
     private final String message;

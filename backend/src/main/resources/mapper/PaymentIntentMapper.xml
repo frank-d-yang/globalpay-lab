@@ -12,6 +12,7 @@
         amount,
         currency,
         idempotency_key,
+        request_fingerprint,
         status,
         provider_reference,
         created_at,
@@ -23,11 +24,41 @@
         #{amount},
         #{currency},
         #{idempotencyKey},
+        #{requestFingerprint},
         #{status},
         #{providerReference},
         #{createdAt},
         #{updatedAt}
         )
+    </insert>
+
+    <insert id="insertIfAbsent">
+        INSERT INTO payment_intent (
+        id,
+        merchant_id,
+        amount,
+        currency,
+        idempotency_key,
+        request_fingerprint,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        )
+        VALUES (
+        #{id},
+        #{merchantId},
+        #{amount},
+        #{currency},
+        #{idempotencyKey},
+        #{requestFingerprint},
+        #{status},
+        #{providerReference},
+        #{createdAt},
+        #{updatedAt}
+        )
+        ON CONFLICT (merchant_id, idempotency_key)
+        DO NOTHING
     </insert>
 
     <select id="findById"
@@ -55,5 +86,38 @@
         WHERE id = #{payment.id}
         AND status = #{expectedStatus}
     </update>
+
+    <select id="findByMerchantAndIdempotencyKey"
+            resultType="com.globalpay.lab.payment.domain.PaymentIntent">
+        SELECT
+        id,
+        merchant_id,
+        amount,
+        currency,
+        idempotency_key,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        FROM payment_intent
+        WHERE merchant_id = #{merchantId}
+        AND idempotency_key = #{idempotencyKey}
+    </select>
+
+    <select id="findByIdAndMerchantId" resultType="com.globalpay.lab.payment.domain.PaymentIntent">
+        SELECT
+        id,
+        merchant_id,
+        amount,
+        currency,
+        idempotency_key,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        FROM payment_intent
+        WHERE id = #{id}
+        AND merchant_id = #{merchantId}
+    </select>
 
 </mapper>

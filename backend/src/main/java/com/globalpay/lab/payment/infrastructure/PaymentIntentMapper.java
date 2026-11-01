@@ -18,4 +18,13 @@ public interface PaymentIntentMapper {
             @Param("payment") PaymentIntent payment,
             @Param("expectedStatus") PaymentStatus expectedStatus
     );
+
+    PaymentIntent findByMerchantAndIdempotencyKey(
+            @Param("merchantId") UUID merchantId,
+            @Param("idempotencyKey") String idempotencyKey
+    );
+
+    int insertIfAbsent(PaymentIntent payment);
+
+    PaymentIntent findByIdAndMerchantId(@Param("id")UUID paymentId, @Param("merchantId")UUID merchantId);
 }
