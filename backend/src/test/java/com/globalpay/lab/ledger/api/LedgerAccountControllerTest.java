@@ -10,6 +10,7 @@ import com.globalpay.lab.ledger.domain.AccountStatus;
 import com.globalpay.lab.ledger.domain.AccountType;
 import com.globalpay.lab.ledger.domain.LedgerAccount;
 import com.globalpay.lab.ledger.domain.OwnerType;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import com.globalpay.lab.ledger.application.LedgerAccountService;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 @WebMvcTest(LedgerAccountController.class)
+@AutoConfigureMockMvc(addFilters = false)
 public class LedgerAccountControllerTest {
 
     @Autowired
