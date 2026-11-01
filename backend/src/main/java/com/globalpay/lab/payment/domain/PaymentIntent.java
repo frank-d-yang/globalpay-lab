@@ -134,6 +134,11 @@ public class PaymentIntent {
         }
     }
 
+    public String getRequestFingerprint() {
+        return "v1|" + currency.getCurrencyCode()
+                + "|" + amount.stripTrailingZeros().toPlainString();
+    }
+
     public UUID getId() {
         return id;
     }
