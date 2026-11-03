@@ -2,6 +2,9 @@ package com.globalpay.lab.payment;
 
 import com.globalpay.lab.merchant.application.MerchantService;
 import com.globalpay.lab.merchant.domain.Merchant;
+import com.globalpay.lab.mockpsp.domain.ProviderOperation;
+import com.globalpay.lab.mockpsp.domain.ProviderOperationStatus;
+import com.globalpay.lab.mockpsp.infrastructure.ProviderOperationMapper;
 import com.globalpay.lab.security.application.MerchantApiKeyService;
 import com.jayway.jsonpath.JsonPath;
 
@@ -18,7 +21,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -48,6 +54,9 @@ class PaymentIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ProviderOperationMapper providerOperationMapper;
 
     @Test
     void shouldCreateAndQueryPayment() throws Exception {
@@ -277,5 +286,345 @@ class PaymentIntegrationTest {
             executor.shutdownNow();
         }
     }
+
+    @Test
+    void shouldProcessPaymentSuccessfully() throws Exception {
+
+        Merchant merchant = merchantService.createMerchant("UOW");
+        String apiKey = apiKeyService.issueKey(merchant.getId());
+
+        UUID paymentId = paymentId(
+                createPayment(
+                        apiKey,
+                        UUID.randomUUID().toString(),
+                        "100.00"
+                )
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/payments/{id}/process", paymentId)
+                                .header("X-API-Key", apiKey)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status")
+                        .value("PROCESSING"));
+
+        String status = jdbcTemplate.queryForObject(
+                "SELECT status FROM payment_intent WHERE id = ?",
+                String.class,
+                paymentId
+        );
+
+        String providerReference = jdbcTemplate.queryForObject(
+                "SELECT provider_reference FROM payment_intent WHERE id = ?",
+                String.class,
+                paymentId
+        );
+
+        assertEquals("PROCESSING", status);
+        assertNotNull(providerReference);
+    }
+
+    @Test
+    void shouldNotCreateDuplicateProviderOperation() throws Exception {
+
+        Merchant merchant = merchantService.createMerchant("UOW");
+        String apiKey = apiKeyService.issueKey(merchant.getId());
+
+        UUID paymentId = paymentId(
+                createPayment(
+                        apiKey,
+                        UUID.randomUUID().toString(),
+                        "100.00"
+                )
+        );
+
+        // 第一次处理
+        mockMvc.perform(
+                post("/api/v1/payments/{id}/process", paymentId)
+                        .header("X-API-Key", apiKey)
+        ).andExpect(status().isOk());
+
+        // 第二次处理
+        mockMvc.perform(
+                post("/api/v1/payments/{id}/process", paymentId)
+                        .header("X-API-Key", apiKey)
+        ).andExpect(status().isOk());
+
+        Long count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM provider_operation
+                WHERE payment_id = ?
+                """,
+                Long.class,
+                paymentId
+        );
+
+        assertEquals(1L, count);
+    }
+
+    @Test
+    void shouldPreventCrossMerchantProcessing() throws Exception {
+
+        Merchant merchantA =
+                merchantService.createMerchant("Merchant A");
+
+        Merchant merchantB =
+                merchantService.createMerchant("Merchant B");
+
+        String apiKeyA =
+                apiKeyService.issueKey(merchantA.getId());
+
+        String apiKeyB =
+                apiKeyService.issueKey(merchantB.getId());
+
+        UUID paymentId = paymentId(
+                createPayment(
+                        apiKeyB,
+                        UUID.randomUUID().toString(),
+                        "100.00"
+                )
+        );
+
+        // 商户 A 尝试处理商户 B 的支付
+        MvcResult result = mockMvc.perform(
+                post("/api/v1/payments/{id}/process", paymentId)
+                        .header("X-API-Key", apiKeyA)
+        ).andReturn();
+
+        assertEquals(404, responseCode(result));
+
+        String status = jdbcTemplate.queryForObject(
+                "SELECT status FROM payment_intent WHERE id = ?",
+                String.class,
+                paymentId
+        );
+
+        assertEquals("CREATED", status);
+
+        Long count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM provider_operation
+                WHERE payment_id = ?
+                """,
+                Long.class,
+                paymentId
+        );
+
+        assertEquals(0L, count);
+    }
+
+    @Test
+    void shouldNotCreateDuplicateProviderOperationConcurrently()
+            throws Exception {
+
+        Merchant merchant = merchantService.createMerchant("UOW");
+        String apiKey = apiKeyService.issueKey(merchant.getId());
+
+        UUID paymentId = paymentId(
+                createPayment(
+                        apiKey,
+                        UUID.randomUUID().toString(),
+                        "100.00"
+                )
+        );
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+
+        Callable<MvcResult> task = () -> {
+            ready.countDown();
+
+            if (!start.await(15, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Start timed out");
+            }
+
+            return mockMvc.perform(
+                    post("/api/v1/payments/{id}/process", paymentId)
+                            .header("X-API-Key", apiKey)
+            ).andReturn();
+        };
+
+        try {
+            Future<MvcResult> first = executor.submit(task);
+            Future<MvcResult> second = executor.submit(task);
+
+            assertTrue(ready.await(15, TimeUnit.SECONDS));
+            start.countDown();
+
+            MvcResult resultA = first.get(30, TimeUnit.SECONDS);
+            MvcResult resultB = second.get(30, TimeUnit.SECONDS);
+
+            // At least one request should succeed.
+            assertTrue(
+                    responseCode(resultA) == 200
+                            || responseCode(resultB) == 200
+            );
+
+            Long count = jdbcTemplate.queryForObject(
+                    """
+                    SELECT COUNT(*)
+                    FROM provider_operation
+                    WHERE payment_id = ?
+                    """,
+                    Long.class,
+                    paymentId
+            );
+
+            assertEquals(1L, count);
+
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+
+    @Test
+    void shouldMarkPaymentFailedWhenProviderDeclines() throws Exception {
+
+        Merchant merchant = merchantService.createMerchant("UOW");
+        String apiKey = apiKeyService.issueKey(merchant.getId());
+
+        UUID paymentId = paymentId(
+                createPayment(
+                        apiKey,
+                        UUID.randomUUID().toString(),
+                        "100.00"
+                )
+        );
+
+        // Simulate a previously confirmed PSP decline.
+        Instant now = Instant.now();
+
+        ProviderOperation operation = new ProviderOperation(
+                UUID.randomUUID(),
+                paymentId,
+                "payment-" + paymentId,
+                new BigDecimal("100.00"),
+                Currency.getInstance("AUD"),
+                ProviderOperationStatus.DECLINED,
+                "mock-declined-" + paymentId,
+                now,
+                now
+        );
+
+        assertEquals(1, providerOperationMapper.insertIfAbsent(operation));
+
+        // Process the payment through the real API.
+        mockMvc.perform(
+                        post("/api/v1/payments/{id}/process", paymentId)
+                                .header("X-API-Key", apiKey)
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("FAILED"));
+
+        // Verify the persisted payment status.
+        String savedStatus = jdbcTemplate.queryForObject(
+                "SELECT status FROM payment_intent WHERE id = ?",
+                String.class,
+                paymentId
+        );
+
+        assertEquals("FAILED", savedStatus);
+
+        // The same provider operation must not be duplicated.
+        Long count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM provider_operation
+                WHERE payment_id = ?
+                """,
+                Long.class,
+                paymentId
+        );
+
+        assertEquals(1L, count);
+    }
+
+
+    @Test
+    void shouldRecoverProviderSuccessAfterLostResponse()
+            throws Exception {
+
+        Merchant merchant = merchantService.createMerchant("UOW");
+        String apiKey = apiKeyService.issueKey(merchant.getId());
+
+        UUID paymentId = paymentId(
+                createPayment(
+                        apiKey,
+                        UUID.randomUUID().toString(),
+                        "100.00"
+                )
+        );
+
+        // GlobalPay started processing but did not receive the PSP result.
+        jdbcTemplate.update(
+                """
+                UPDATE payment_intent
+                SET status = 'PROCESSING'
+                WHERE id = ?
+                """,
+                paymentId
+        );
+
+        // PSP has already completed the operation successfully.
+        Instant now = Instant.now();
+        String operationId = "payment-" + paymentId;
+        String providerReference = "mock-recovered-" + paymentId;
+
+        ProviderOperation operation = new ProviderOperation(
+                UUID.randomUUID(),
+                paymentId,
+                operationId,
+                new BigDecimal("100.00"),
+                Currency.getInstance("AUD"),
+                ProviderOperationStatus.SUCCEEDED,
+                providerReference,
+                now,
+                now
+        );
+
+        assertEquals(
+                1,
+                providerOperationMapper.insertIfAbsent(operation)
+        );
+
+        // Retry the API after the lost response.
+        mockMvc.perform(
+                        post("/api/v1/payments/{id}/process", paymentId)
+                                .header("X-API-Key", apiKey)
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status")
+                        .value("PROCESSING"));
+
+        // GlobalPay must recover and persist the PSP result.
+        String savedReference = jdbcTemplate.queryForObject(
+                """
+                SELECT provider_reference
+                FROM payment_intent
+                WHERE id = ?
+                """,
+                String.class,
+                paymentId
+        );
+
+        assertEquals(providerReference, savedReference);
+
+        Long operationCount = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM provider_operation
+                WHERE operation_id = ?
+                """,
+                Long.class,
+                operationId
+        );
+
+        assertEquals(1L, operationCount);
+    }
+
 }
 

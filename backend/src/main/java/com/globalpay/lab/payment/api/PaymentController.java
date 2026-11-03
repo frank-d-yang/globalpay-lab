@@ -50,5 +50,18 @@ public class PaymentController {
 
         return Response.success(PaymentResponse.from(payment));
     }
+
+    @PostMapping("/{paymentId}/process")
+    public Response<PaymentResponse> processPayment(
+            @AuthenticationPrincipal UUID merchantId,
+            @PathVariable UUID paymentId) {
+
+        PaymentIntent payment = paymentService.processPayment(
+                merchantId,
+                paymentId
+        );
+
+        return Response.success(PaymentResponse.from(payment));
+    }
 }
 
