@@ -124,4 +124,21 @@
         AND merchant_id = #{merchantId}
     </select>
 
+    <select id="findByIdForUpdate"
+            resultType="com.globalpay.lab.payment.domain.PaymentIntent">
+        SELECT
+        id,
+        merchant_id,
+        amount,
+        currency,
+        idempotency_key,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        FROM payment_intent
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
 </mapper>

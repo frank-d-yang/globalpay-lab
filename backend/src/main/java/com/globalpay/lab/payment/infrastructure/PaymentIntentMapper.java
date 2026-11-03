@@ -27,4 +27,6 @@ public interface PaymentIntentMapper {
     int insertIfAbsent(PaymentIntent payment);
 
     PaymentIntent findByIdAndMerchantId(@Param("id")UUID paymentId, @Param("merchantId")UUID merchantId);
+
+    PaymentIntent findByIdForUpdate(@Param("id") UUID id);
 }

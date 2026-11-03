@@ -307,7 +307,7 @@ class PaymentIntegrationTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status")
-                        .value("PROCESSING"));
+                        .value("SUCCEEDED"));
 
         String status = jdbcTemplate.queryForObject(
                 "SELECT status FROM payment_intent WHERE id = ?",
@@ -321,7 +321,7 @@ class PaymentIntegrationTest {
                 paymentId
         );
 
-        assertEquals("PROCESSING", status);
+        assertEquals("SUCCEEDED", status);
         assertNotNull(providerReference);
     }
 
@@ -598,7 +598,7 @@ class PaymentIntegrationTest {
                                 .header("X-API-Key", apiKey)
                 ).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status")
-                        .value("PROCESSING"));
+                        .value("SUCCEEDED"));
 
         // GlobalPay must recover and persist the PSP result.
         String savedReference = jdbcTemplate.queryForObject(

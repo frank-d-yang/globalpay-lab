@@ -94,17 +94,13 @@ class LedgerAccountIntegrationTest {
         Currency aud = Currency.getInstance("AUD");
 
         // 1. Prepare accounts
-        LedgerAccount asset = ledgerAccountService.createAccount(
+        LedgerAccount asset = createTestAccount(
                 OwnerType.PLATFORM,
-                "platform",
-                aud,
                 AccountType.ASSET
         );
 
-        LedgerAccount liability = ledgerAccountService.createAccount(
+        LedgerAccount liability = createTestAccount(
                 OwnerType.MERCHANT,
-                "merchant-test",
-                aud,
                 AccountType.LIABILITY
         );
 
@@ -174,14 +170,14 @@ class LedgerAccountIntegrationTest {
         Currency aud = Currency.getInstance("AUD");
 
         // Arrange: Create accounts
-        LedgerAccount asset = ledgerAccountService.createAccount(
-                OwnerType.PLATFORM, "platform",
-                aud, AccountType.ASSET
+        LedgerAccount asset = createTestAccount(
+                OwnerType.PLATFORM,
+                AccountType.ASSET
         );
 
-        LedgerAccount liability = ledgerAccountService.createAccount(
-                OwnerType.MERCHANT, "merchant-test",
-                aud, AccountType.LIABILITY
+        LedgerAccount liability = createTestAccount(
+                OwnerType.MERCHANT,
+                AccountType.LIABILITY
         );
 
         // Arrange: Create journal
@@ -250,6 +246,20 @@ class LedgerAccountIntegrationTest {
                 .andExpect(jsonPath("$.message")
                         .value("Ledger account not found"));
     }
+
+
+    private LedgerAccount createTestAccount(
+            OwnerType ownerType,
+            AccountType accountType) {
+
+        return ledgerAccountService.createAccount(
+                ownerType,
+                UUID.randomUUID().toString(),
+                Currency.getInstance("AUD"),
+                accountType
+        );
+    }
+
 
 }
 
