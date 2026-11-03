@@ -130,5 +130,56 @@ class PaymentControllerTest {
 
         verifyNoInteractions(paymentService);
     }
+
+    @Test
+    void shouldProcessPaymentSuccessfully() throws Exception {
+
+        PaymentIntent payment = PaymentIntent.create(
+                merchantId,
+                new BigDecimal("100.00"),
+                aud,
+                "order-001"
+        );
+
+        payment.startProcessing();
+
+        when(apiKeyService.authenticate(rawKey))
+                .thenReturn(merchantId);
+
+        when(paymentService.processPayment(
+                merchantId,
+                payment.getId()
+        )).thenReturn(payment);
+
+        mockMvc.perform(
+                        post("/api/v1/payments/{paymentId}/process",
+                                payment.getId())
+                                .header("X-API-Key", rawKey)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id")
+                        .value(payment.getId().toString()))
+                .andExpect(jsonPath("$.data.status")
+                        .value("PROCESSING"));
+
+        verify(paymentService).processPayment(
+                merchantId,
+                payment.getId()
+        );
+    }
+
+    @Test
+    void shouldRejectProcessingWithoutApiKey() throws Exception {
+
+        UUID paymentId = UUID.randomUUID();
+
+        mockMvc.perform(
+                        post("/api/v1/payments/{paymentId}/process",
+                                paymentId)
+                )
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(paymentService);
+    }
 }
 

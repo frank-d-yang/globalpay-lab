@@ -134,6 +134,28 @@ public class PaymentIntent {
         }
     }
 
+    public void confirmProviderSuccess(String reference) {
+        requireStatus(PaymentStatus.PROCESSING);
+
+        if (reference == null
+                || reference.isBlank()
+                || reference.length() > 128) {
+            throw new IllegalArgumentException(
+                    "Invalid provider reference"
+            );
+        }
+
+        if (providerReference != null
+                && !providerReference.equals(reference)) {
+            throw new IllegalStateException(
+                    "Conflicting provider reference"
+            );
+        }
+
+        providerReference = reference;
+        updatedAt = Instant.now();
+    }
+
     public String getRequestFingerprint() {
         return "v1|" + currency.getCurrencyCode()
                 + "|" + amount.stripTrailingZeros().toPlainString();

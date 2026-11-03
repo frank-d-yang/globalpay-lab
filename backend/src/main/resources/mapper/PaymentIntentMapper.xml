@@ -85,6 +85,10 @@
         updated_at = #{payment.updatedAt}
         WHERE id = #{payment.id}
         AND status = #{expectedStatus}
+        AND (
+        provider_reference IS NULL
+        OR provider_reference = #{payment.providerReference}
+        )
     </update>
 
     <select id="findByMerchantAndIdempotencyKey"
