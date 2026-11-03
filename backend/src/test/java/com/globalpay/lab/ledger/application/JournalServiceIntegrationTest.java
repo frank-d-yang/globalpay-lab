@@ -141,14 +141,14 @@ class JournalServiceIntegrationTest {
 
         LedgerAccount asset = ledgerAccountService.createAccount(
                 OwnerType.PLATFORM,
-                "platform",
+                "platform" + UUID.randomUUID(),
                 aud,
                 AccountType.ASSET
         );
 
         LedgerAccount liability = ledgerAccountService.createAccount(
                 OwnerType.MERCHANT,
-                "merchant-test",
+                "merchant-test" + UUID.randomUUID(),
                 aud,
                 AccountType.LIABILITY
         );
@@ -218,7 +218,7 @@ class JournalServiceIntegrationTest {
         LedgerAccount frozenAccount = new LedgerAccount(
                 UUID.randomUUID(),
                 OwnerType.PLATFORM,
-                "platform",
+                "platform" + UUID.randomUUID(),
                 aud,
                 AccountType.ASSET,
                 AccountStatus.FROZEN,
@@ -229,7 +229,7 @@ class JournalServiceIntegrationTest {
 
         LedgerAccount activeAccount = ledgerAccountService.createAccount(
                 OwnerType.MERCHANT,
-                "merchant-test",
+                "merchant-test" + UUID.randomUUID(),
                 aud,
                 AccountType.LIABILITY
         );
@@ -258,14 +258,14 @@ class JournalServiceIntegrationTest {
 
         LedgerAccount usdAccount = ledgerAccountService.createAccount(
                 OwnerType.PLATFORM,
-                "platform",
+                "platform" + UUID.randomUUID(),
                 Currency.getInstance("USD"),
                 AccountType.ASSET
         );
 
         LedgerAccount audAccount = ledgerAccountService.createAccount(
                 OwnerType.MERCHANT,
-                "merchant-test",
+                "merchant-test" + UUID.randomUUID(),
                 Currency.getInstance("AUD"),
                 AccountType.LIABILITY
         );

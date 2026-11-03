@@ -74,4 +74,42 @@
     </select>
 
 
+    <select id="findByOwnerAndCurrencyAndType"
+            resultMap="LedgerAccountResultMap">
+        SELECT *
+        FROM ledger_account
+        WHERE owner_type = #{ownerType}
+        AND owner_id = #{ownerId}
+        AND currency = #{currency}
+        AND account_type = #{accountType}
+    </select>
+
+    <insert id="insertIfAbsent">
+        INSERT INTO ledger_account (
+        id,
+        owner_type,
+        owner_id,
+        currency,
+        account_type,
+        status,
+        created_at
+        )
+        VALUES (
+        #{id},
+        #{ownerType},
+        #{ownerId},
+        #{currency},
+        #{accountType},
+        #{status},
+        #{createdAt}
+        )
+        ON CONFLICT (
+        owner_type,
+        owner_id,
+        currency,
+        account_type
+        )
+        DO NOTHING
+    </insert>
+
 </mapper>

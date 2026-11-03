@@ -32,6 +32,9 @@ class PaymentServiceTest {
     @Mock
     private PaymentProvider paymentProvider;
 
+    @Mock
+    private PaymentLedgerService paymentLedgerService;
+
     @InjectMocks
     private PaymentService paymentService;
 
@@ -157,12 +160,14 @@ class PaymentServiceTest {
                         "mock-ref-123"
                 ));
 
+        mockLedgerCompletion(payment);
+
         PaymentIntent result = paymentService.processPayment(
                 merchantId,
                 payment.getId()
         );
 
-        assertEquals(PaymentStatus.PROCESSING, result.getStatus());
+        assertEquals(PaymentStatus.SUCCEEDED, result.getStatus());
         assertEquals("mock-ref-123", result.getProviderReference());
 
         verify(paymentProvider).process(
@@ -262,12 +267,14 @@ class PaymentServiceTest {
                 eq(PaymentStatus.PROCESSING)
         )).thenReturn(1);
 
+        mockLedgerCompletion(payment);
+
         PaymentIntent result = paymentService.processPayment(
                 merchantId,
                 payment.getId()
         );
 
-        assertEquals(PaymentStatus.PROCESSING, result.getStatus());
+        assertEquals(PaymentStatus.SUCCEEDED, result.getStatus());
         assertEquals("mock-ref-456", result.getProviderReference());
 
         verify(paymentProvider).getResult(
@@ -306,6 +313,8 @@ class PaymentServiceTest {
                 same(payment),
                 eq(PaymentStatus.PROCESSING)
         )).thenReturn(1);
+
+        mockLedgerCompletion(payment);
 
         PaymentIntent result = paymentService.processPayment(
                 merchantId,
@@ -393,6 +402,15 @@ class PaymentServiceTest {
                 same(payment),
                 eq(PaymentStatus.CREATED)
         );
+    }
+
+    private void mockLedgerCompletion(PaymentIntent payment) {
+        when(paymentLedgerService.completePayment(payment.getId()))
+                .thenAnswer(invocation -> {
+                    assertNotNull(payment.getProviderReference());
+                    payment.succeed(true, true);
+                    return payment;
+                });
     }
 }
 

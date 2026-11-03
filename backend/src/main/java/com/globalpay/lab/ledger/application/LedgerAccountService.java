@@ -88,4 +88,47 @@ public class LedgerAccountService {
 
         return journalLineMapper.findHistoryByAccountId(accountId);
     }
+
+
+    @Transactional
+    public LedgerAccount getOrCreateAccount(
+            OwnerType ownerType,
+            String ownerId,
+            Currency currency,
+            AccountType accountType) {
+
+        LedgerAccount account =
+                ledgerAccountMapper.findByOwnerAndCurrencyAndType(
+                        ownerType, ownerId, currency, accountType
+                );
+
+        if (account != null) {
+            return account;
+        }
+
+        LedgerAccount newAccount = new LedgerAccount(
+                UUID.randomUUID(),
+                ownerType,
+                ownerId,
+                currency,
+                accountType,
+                AccountStatus.ACTIVE,
+                Instant.now()
+        );
+
+        ledgerAccountMapper.insertIfAbsent(newAccount);
+
+        account = ledgerAccountMapper.findByOwnerAndCurrencyAndType(
+                ownerType, ownerId, currency, accountType
+        );
+
+        if (account == null) {
+            throw new IllegalStateException(
+                    "Failed to resolve ledger account"
+            );
+        }
+
+        return account;
+    }
+
 }

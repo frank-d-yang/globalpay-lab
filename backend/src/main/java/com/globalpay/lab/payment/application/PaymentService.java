@@ -25,6 +25,9 @@ public class PaymentService {
     @Autowired
     private PaymentProvider paymentProvider;
 
+    @Autowired
+    private PaymentLedgerService paymentLedgerService;
+
     public PaymentIntent createPayment(
             UUID merchantId,
             BigDecimal amount,
@@ -130,8 +133,7 @@ public class PaymentService {
 
         // 3. Provider success already confirmed
         if (payment.getProviderReference() != null) {
-            // TODO #25: Complete ledger posting
-            return payment;
+            return paymentLedgerService.completePayment(payment.getId());
         }
 
         String operationId = "payment-" + payment.getId();
@@ -170,7 +172,9 @@ public class PaymentService {
                     );
                 }
 
-                // TODO #25: Post journal to Ledger Core
+                return paymentLedgerService.completePayment(
+                        payment.getId()
+                );
             }
 
             case DECLINED -> {
