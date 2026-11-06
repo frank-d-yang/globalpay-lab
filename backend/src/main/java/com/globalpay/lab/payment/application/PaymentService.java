@@ -28,6 +28,32 @@ public class PaymentService {
     @Autowired
     private PaymentLedgerService paymentLedgerService;
 
+    /**
+     * 代码逻辑：
+     *
+     * 先插入再查询，数据库对merchantId和幂等key加了唯一约束
+     *
+     * 为了处理并发的情况，先完成数据库的插入操作，并对插入结果进行判断
+     * 如果inserted = 1，则说明成功插入
+     * 如果inserted = 0，则说明之前有人创建了，（这里就很好的解决了并发的情形）
+     *
+     * 然后，因为数据库里已经有了，根据merchantId和幂等key把数据查出来，
+     * 如果payment == null，抛异常，如果不为null，则比较参数指纹，
+     * 如果参数指纹相同，返回已有payment，如果不同，说明新的请求有问题，因为幂等key相同，说明是同一创建请求，参数指纹应该相同。
+     * 不同的话，需要抛出异常。
+     *
+     * 纠正：先查再插，这种无法解决并发情况下重复创建的问题
+     * 比如A线程查到没有，A create,
+     * B线程也查到没有，B也create，需要数据库的唯一约束避免B创建
+     *
+     * 然后B返回值是0，接着我们又得走一遍查询的判断，所以变成了查->插入->查询
+     *
+     * @param merchantId
+     * @param amount
+     * @param currency
+     * @param idempotencyKey
+     * @return
+     */
     public PaymentIntent createPayment(
             UUID merchantId,
             BigDecimal amount,
@@ -122,6 +148,9 @@ public class PaymentService {
                     PaymentStatus.CREATED
             );
 
+            /**
+             * 保证了只有一个线程能继续processPayment
+             */
             if (updated != 1) {
                 throw new IllegalStateException(
                         "Payment status changed concurrently"

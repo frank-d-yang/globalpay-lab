@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +18,8 @@ public interface LedgerAccountMapper {
     int insert(LedgerAccount account);
 
     LedgerAccount findById(@Param("id") UUID id);
+
+    List<LedgerAccount> findByOwnerId(@Param("ownerId") String ownerId);
 
     List<LedgerAccount> findAll();
 
@@ -30,5 +33,4 @@ public interface LedgerAccountMapper {
     );
 
     int insertIfAbsent(LedgerAccount account);
-
 }
