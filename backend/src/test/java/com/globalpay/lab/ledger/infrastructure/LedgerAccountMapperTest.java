@@ -258,4 +258,115 @@ public class LedgerAccountMapperTest {
                 new BigDecimal(expected).compareTo(actual)
         );
     }
+
+    @Test
+    void shouldFindMerchantPayableAccountsByOwnerId() {
+        String merchantId = UUID.randomUUID().toString();
+
+        LedgerAccount aud = createTestAccount(
+                OwnerType.MERCHANT,
+                merchantId,
+                "AUD",
+                AccountType.LIABILITY
+        );
+
+        LedgerAccount usd = createTestAccount(
+                OwnerType.MERCHANT,
+                merchantId,
+                "USD",
+                AccountType.LIABILITY
+        );
+
+        List<LedgerAccount> accounts =
+                accountMapper.findByOwnerId(merchantId);
+
+        assertEquals(2, accounts.size());
+
+        assertTrue(accounts.stream()
+                .anyMatch(a -> a.getId().equals(aud.getId())));
+
+        assertTrue(accounts.stream()
+                .anyMatch(a -> a.getId().equals(usd.getId())));
+    }
+
+    @Test
+    void shouldNotReturnOtherMerchantAccounts() {
+        String merchantA = UUID.randomUUID().toString();
+        String merchantB = UUID.randomUUID().toString();
+
+        createTestAccount(
+                OwnerType.MERCHANT,
+                merchantA,
+                "AUD",
+                AccountType.LIABILITY
+        );
+
+        createTestAccount(
+                OwnerType.MERCHANT,
+                merchantB,
+                "AUD",
+                AccountType.LIABILITY
+        );
+
+        List<LedgerAccount> accounts =
+                accountMapper.findByOwnerId(merchantA);
+
+        assertEquals(1, accounts.size());
+        assertEquals(merchantA, accounts.get(0).getOwnerId());
+    }
+
+    @Test
+    void shouldOnlyReturnMerchantLiabilityAccounts() {
+        String ownerId = UUID.randomUUID().toString();
+
+        LedgerAccount payable = createTestAccount(
+                OwnerType.MERCHANT,
+                ownerId,
+                "AUD",
+                AccountType.LIABILITY
+        );
+
+        createTestAccount(
+                OwnerType.MERCHANT,
+                ownerId,
+                "AUD",
+                AccountType.ASSET
+        );
+
+        createTestAccount(
+                OwnerType.PLATFORM,
+                ownerId,
+                "AUD",
+                AccountType.LIABILITY
+        );
+
+        List<LedgerAccount> accounts =
+                accountMapper.findByOwnerId(ownerId);
+
+        assertEquals(1, accounts.size());
+        assertEquals(payable.getId(), accounts.get(0).getId());
+    }
+
+
+    private LedgerAccount createTestAccount(
+            OwnerType ownerType,
+            String ownerId,
+            String currency,
+            AccountType accountType) {
+
+        LedgerAccount account = new LedgerAccount(
+                UUID.randomUUID(),
+                ownerType,
+                ownerId,
+                Currency.getInstance(currency),
+                accountType,
+                AccountStatus.ACTIVE,
+                Instant.now()
+        );
+
+        assertEquals(1, accountMapper.insert(account));
+
+        return account;
+    }
+
 }

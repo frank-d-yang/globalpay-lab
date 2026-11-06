@@ -4,7 +4,6 @@ import com.globalpay.lab.ledger.application.JournalService;
 import com.globalpay.lab.ledger.application.LedgerAccountService;
 import com.globalpay.lab.ledger.domain.*;
 import com.globalpay.lab.ledger.infrastructure.JournalEntryMapper;
-import com.globalpay.lab.ledger.infrastructure.LedgerAccountMapper;
 import com.globalpay.lab.payment.domain.*;
 import com.globalpay.lab.payment.infrastructure.PaymentIntentMapper;
 import com.globalpay.lab.payment.infrastructure.PaymentJournalMapper;
@@ -24,9 +23,6 @@ public class PaymentLedgerService {
 
     @Autowired
     private PaymentJournalMapper paymentJournalMapper;
-
-    @Autowired
-    private LedgerAccountMapper ledgerAccountMapper;
 
     @Autowired
     private JournalEntryMapper journalEntryMapper;
@@ -53,8 +49,13 @@ public class PaymentLedgerService {
             return payment;
         }
 
-        if (payment.getStatus() != PaymentStatus.PROCESSING
-                || payment.getProviderReference() == null) {
+        if (payment.getStatus() != PaymentStatus.PROCESSING) {
+            throw new IllegalStateException(
+                    "Payment is not in PROCESSING status"
+            );
+        }
+
+        if (payment.getProviderReference() == null) {
             throw new IllegalStateException(
                     "Provider success is not confirmed"
             );

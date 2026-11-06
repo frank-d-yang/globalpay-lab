@@ -54,6 +54,15 @@
         ORDER BY created_at DESC, id
     </select>
 
+    <select id="findByOwnerId" resultMap="LedgerAccountResultMap">
+        SELECT *
+        FROM ledger_account
+        WHERE
+        owner_type = 'MERCHANT'
+        AND owner_id = #{ownerId}
+        AND account_type = 'LIABILITY'
+        ORDER BY created_at DESC, id
+    </select>
 
     <select id="sumDebitMinusCredit"
             resultType="java.math.BigDecimal">
