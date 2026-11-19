@@ -15,6 +15,26 @@ public class MockPaymentService {
     @Autowired
     private ProviderOperationMapper mapper;
 
+    public ProviderOperation refund(MockRefundRequest request) {
+
+        if (request == null || request.refundId() == null) {
+            throw new IllegalArgumentException(
+                    "Invalid refund request"
+            );
+        }
+
+        String operationId = "refund-" + request.refundId();
+
+        MockPaymentRequest providerRequest = new MockPaymentRequest(
+                request.paymentId(),
+                operationId,
+                request.amount(),
+                request.currency()
+        );
+
+        return process(providerRequest);
+    }
+
     public ProviderOperation process(MockPaymentRequest request) {
         validateRequest(request);
 

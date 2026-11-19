@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.globalpay.lab.refund.infrastructure.RefundMapper">
+
+    <insert id="insertIfAbsent">
+        INSERT INTO refund (
+        id,
+        payment_id,
+        merchant_id,
+        amount,
+        currency,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        )
+        VALUES (
+        #{id},
+        #{paymentId},
+        #{merchantId},
+        #{amount},
+        #{currency},
+        #{status},
+        #{providerReference},
+        #{createdAt},
+        #{updatedAt}
+        )
+        ON CONFLICT (payment_id) DO NOTHING
+    </insert>
+
+    <select id="findByPaymentId"
+            resultType="com.globalpay.lab.refund.domain.Refund">
+        SELECT
+        id,
+        payment_id,
+        merchant_id,
+        amount,
+        currency,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        FROM refund
+        WHERE payment_id = #{paymentId}
+    </select>
+
+
+    <select id="findByIdForUpdate"
+            resultType="com.globalpay.lab.refund.domain.Refund">
+        SELECT *
+        FROM refund
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
+    <update id="updateStatus">
+        UPDATE refund
+        SET
+        status = #{refund.status},
+        provider_reference = #{refund.providerReference},
+        updated_at = #{refund.updatedAt}
+        WHERE id = #{refund.id}
+        AND status = #{expectedStatus}
+        AND (
+        provider_reference IS NULL
+        OR provider_reference = #{refund.providerReference}
+        )
+    </update>
+
+    <select id="findByIdAndMerchantId"
+            resultType="com.globalpay.lab.refund.domain.Refund">
+        SELECT
+        id,
+        payment_id,
+        merchant_id,
+        amount,
+        currency,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        FROM refund
+        WHERE id = #{id}
+        AND merchant_id = #{merchantId}
+    </select>
+</mapper>
