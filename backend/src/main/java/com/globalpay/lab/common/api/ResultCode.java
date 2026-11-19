@@ -14,6 +14,7 @@ public enum ResultCode {
 
     PAYMENT_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Idempotency key reused with different payment parameters"),
 
+    REFUND_NOT_FOUND(HttpStatus.NOT_FOUND, "Refund not found"),
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Payment not found");
 
     private final HttpStatus status;
