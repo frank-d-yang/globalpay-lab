@@ -1,122 +1,127 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useEffect, useState } from 'react'
+import PaymentList from './components/PaymentList'
+import PaymentDetails from './components/PaymentDetails'
+import { getPayments } from './services/paymentService'
+import type { Payment } from './types/payment'
 import './App.css'
 
+const PAGE_SIZE = 10
+
 function App() {
-  const [count, setCount] = useState(0)
+    const [payments, setPayments] = useState<Payment[]>([])
+    const [selectedPayment, setSelectedPayment] =
+        useState<Payment | null>(null)
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    const [page, setPage] = useState(0)
+    const [total, setTotal] = useState(0)
 
-      <div className="ticks"></div>
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [retryCount, setRetryCount] = useState(0)
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+    useEffect(() => {
+        let active = true
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        async function loadPayments() {
+            try {
+                const result = await getPayments(page, PAGE_SIZE)
+
+                if (active) {
+                    setPayments(result.items)
+                    setTotal(result.total)
+                }
+            } catch {
+                if (active) {
+                    setError('Failed to load payments.')
+                }
+            } finally {
+                if (active) {
+                    setLoading(false)
+                }
+            }
+        }
+
+        void loadPayments()
+
+        return () => {
+            active = false
+        }
+    }, [page, retryCount])
+
+    const totalPages = Math.ceil(total / PAGE_SIZE)
+
+    function changePage(nextPage: number) {
+        setPage(nextPage)
+        setSelectedPayment(null)
+        setPayments([])
+        setError(null)
+        setLoading(true)
+    }
+
+    function retry() {
+        setError(null)
+        setLoading(true)
+        setRetryCount((count) => count + 1)
+    }
+
+    return (
+        <main>
+            <header>
+                <h1>GlobalPay Lab</h1>
+                <p>Sandbox Payment Operations · Live Sandbox</p>
+            </header>
+
+            {loading ? (
+                <section>
+                    <p>Loading payments...</p>
+                </section>
+            ) : error ? (
+                <section role="alert">
+                    <p>{error}</p>
+                    <button type="button" onClick={retry}>
+                        Retry
+                    </button>
+                </section>
+            ) : (
+                <>
+                    <PaymentList
+                        payments={payments}
+                        onSelectPayment={setSelectedPayment}
+                    />
+
+                    {total > 0 && (
+                        <div className="pagination">
+                            <button
+                                type="button"
+                                disabled={page === 0}
+                                onClick={() => changePage(page - 1)}
+                            >
+                                Previous
+                            </button>
+
+                            <span>
+                Page {page + 1} of {totalPages}
+                                {' · '}
+                                {total} payments
+              </span>
+
+                            <button
+                                type="button"
+                                disabled={(page + 1) * PAGE_SIZE >= total}
+                                onClick={() => changePage(page + 1)}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
+
+                    {selectedPayment && (
+                        <PaymentDetails payment={selectedPayment} />
+                    )}
+                </>
+            )}
+        </main>
+    )
 }
 
 export default App

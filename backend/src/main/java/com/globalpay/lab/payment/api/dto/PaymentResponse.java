@@ -1,3 +1,4 @@
+
 package com.globalpay.lab.payment.api.dto;
 
 import com.globalpay.lab.payment.domain.PaymentIntent;
@@ -9,20 +10,25 @@ import java.util.UUID;
 
 public record PaymentResponse(
         UUID id,
+        UUID merchantId,
         BigDecimal amount,
         String currency,
         PaymentStatus status,
-        Instant createdAt
+        String providerReference,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 
     public static PaymentResponse from(PaymentIntent payment) {
         return new PaymentResponse(
                 payment.getId(),
+                payment.getMerchantId(),
                 payment.getAmount(),
                 payment.getCurrency().getCurrencyCode(),
                 payment.getStatus(),
-                payment.getCreatedAt()
+                payment.getProviderReference(),
+                payment.getCreatedAt(),
+                payment.getUpdatedAt()
         );
     }
 }
-

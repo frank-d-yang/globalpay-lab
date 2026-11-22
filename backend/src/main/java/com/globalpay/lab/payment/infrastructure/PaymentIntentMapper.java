@@ -5,6 +5,7 @@ import com.globalpay.lab.payment.domain.PaymentStatus;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
 import java.util.UUID;
 
 @Mapper
@@ -46,4 +47,16 @@ public interface PaymentIntentMapper {
     PaymentIntent findByIdAndMerchantId(@Param("id")UUID paymentId, @Param("merchantId")UUID merchantId);
 
     PaymentIntent findByIdForUpdate(@Param("id") UUID id);
+
+
+    List<PaymentIntent> findByMerchantId(
+            @Param("merchantId") UUID merchantId,
+            @Param("limit") int limit,
+            @Param("offset") long offset
+    );
+
+    long countByMerchantId(
+            @Param("merchantId") UUID merchantId
+    );
+
 }

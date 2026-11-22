@@ -2,6 +2,8 @@ package com.globalpay.lab.payment.application;
 
 import com.globalpay.lab.common.api.ResultCode;
 import com.globalpay.lab.common.exception.BusinessException;
+import com.globalpay.lab.payment.api.dto.PaymentPageResponse;
+import com.globalpay.lab.payment.api.dto.PaymentResponse;
 import com.globalpay.lab.payment.application.port.PaymentProvider;
 import com.globalpay.lab.payment.application.port.ProviderOutcome;
 import com.globalpay.lab.payment.application.port.ProviderResult;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.Currency;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -230,5 +233,29 @@ public class PaymentService {
         return payment;
     }
 
+    public PaymentPageResponse listPayments(UUID merchantId, int page, int size) {
+        if (merchantId == null
+                || page < 0
+                || size < 1
+                || size > 100) {
+            throw new BusinessException(ResultCode.BAD_REQUEST);
+        }
+
+        long offset = (long) page * size;
+
+        if (offset > Integer.MAX_VALUE) {
+            throw new BusinessException(ResultCode.BAD_REQUEST);
+        }
+
+        List<PaymentResponse> items = paymentMapper
+                .findByMerchantId(merchantId, size, offset)
+                .stream()
+                .map(PaymentResponse::from)
+                .toList();
+
+        long total = paymentMapper.countByMerchantId(merchantId);
+
+        return new PaymentPageResponse(items, page, size, total);
+    }
 }
 

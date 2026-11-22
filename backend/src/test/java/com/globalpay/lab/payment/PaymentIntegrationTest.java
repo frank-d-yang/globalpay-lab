@@ -307,7 +307,13 @@ class PaymentIntegrationTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status")
-                        .value("SUCCEEDED"));
+                        .value("SUCCEEDED"))
+                .andExpect(jsonPath("$.data.merchantId")
+                        .value(merchant.getId().toString()))
+                .andExpect(jsonPath("$.data.providerReference")
+                        .isNotEmpty())
+                .andExpect(jsonPath("$.data.updatedAt")
+                        .exists());;
 
         String status = jdbcTemplate.queryForObject(
                 "SELECT status FROM payment_intent WHERE id = ?",
@@ -624,6 +630,154 @@ class PaymentIntegrationTest {
         );
 
         assertEquals(1L, operationCount);
+    }
+
+
+    @Test
+    void shouldListPaymentsWithPagination() throws Exception {
+
+        Merchant merchant =
+                merchantService.createMerchant("Pagination Merchant");
+
+        String apiKey = apiKeyService.issueKey(merchant.getId());
+
+        UUID payment1 = paymentId(createPayment(
+                apiKey, UUID.randomUUID().toString(), "100.00"
+        ));
+
+        UUID payment2 = paymentId(createPayment(
+                apiKey, UUID.randomUUID().toString(), "200.00"
+        ));
+
+        UUID payment3 = paymentId(createPayment(
+                apiKey, UUID.randomUUID().toString(), "300.00"
+        ));
+
+        // Assign deterministic timestamps for pagination testing.
+        jdbcTemplate.update(
+                "UPDATE payment_intent SET created_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(Instant.parse("2026-01-01T10:00:00Z")),
+                payment1
+        );
+
+        jdbcTemplate.update(
+                "UPDATE payment_intent SET created_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(Instant.parse("2026-01-01T11:00:00Z")),
+                payment2
+        );
+
+        jdbcTemplate.update(
+                "UPDATE payment_intent SET created_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(Instant.parse("2026-01-01T12:00:00Z")),
+                payment3
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/payments")
+                                .header("X-API-Key", apiKey)
+                                .param("page", "0")
+                                .param("size", "2")
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(2))
+                .andExpect(jsonPath("$.data.total").value(3))
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].id")
+                        .value(payment3.toString()))
+                .andExpect(jsonPath("$.data.items[1].id")
+                        .value(payment2.toString()));
+
+        mockMvc.perform(
+                        get("/api/v1/payments")
+                                .header("X-API-Key", apiKey)
+                                .param("page", "1")
+                                .param("size", "2")
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.total").value(3))
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id")
+                        .value(payment1.toString()));
+    }
+
+    @Test
+    void shouldListOnlyCurrentMerchantPayments() throws Exception {
+
+        Merchant merchantA =
+                merchantService.createMerchant("List Merchant A");
+
+        Merchant merchantB =
+                merchantService.createMerchant("List Merchant B");
+
+        String apiKeyA =
+                apiKeyService.issueKey(merchantA.getId());
+
+        String apiKeyB =
+                apiKeyService.issueKey(merchantB.getId());
+
+        UUID paymentA1 = paymentId(createPayment(
+                apiKeyA, UUID.randomUUID().toString(), "100.00"
+        ));
+
+        UUID paymentA2 = paymentId(createPayment(
+                apiKeyA, UUID.randomUUID().toString(), "200.00"
+        ));
+
+        UUID paymentB = paymentId(createPayment(
+                apiKeyB, UUID.randomUUID().toString(), "300.00"
+        ));
+
+        MvcResult result = mockMvc.perform(
+                        get("/api/v1/payments")
+                                .header("X-API-Key", apiKeyA)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+
+        assertTrue(body.contains(paymentA1.toString()));
+        assertTrue(body.contains(paymentA2.toString()));
+        assertFalse(body.contains(paymentB.toString()));
+    }
+
+
+    @Test
+    void shouldRejectInvalidPaymentPagination() throws Exception {
+
+        Merchant merchant =
+                merchantService.createMerchant("Invalid Pagination Merchant");
+
+        String apiKey =
+                apiKeyService.issueKey(merchant.getId());
+
+        mockMvc.perform(
+                        get("/api/v1/payments")
+                                .header("X-API-Key", apiKey)
+                                .param("page", "-1")
+                                .param("size", "20")
+                )
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(
+                        get("/api/v1/payments")
+                                .header("X-API-Key", apiKey)
+                                .param("page", "0")
+                                .param("size", "101")
+                )
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(
+                        get("/api/v1/payments")
+                                .header("X-API-Key", apiKey)
+                                .param("page", "0")
+                                .param("size", "0")
+                )
+                .andExpect(jsonPath("$.code").value(400));
     }
 
 }
