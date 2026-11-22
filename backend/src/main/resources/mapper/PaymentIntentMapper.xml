@@ -141,4 +141,32 @@
         FOR UPDATE
     </select>
 
+
+    <select id="findByMerchantId"
+            resultType="com.globalpay.lab.payment.domain.PaymentIntent">
+        SELECT
+        id,
+        merchant_id,
+        amount,
+        currency,
+        idempotency_key,
+        status,
+        provider_reference,
+        created_at,
+        updated_at
+        FROM payment_intent
+        WHERE merchant_id = #{merchantId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+        OFFSET #{offset}
+    </select>
+
+    <select id="countByMerchantId"
+            resultType="long">
+        SELECT COUNT(*)
+        FROM payment_intent
+        WHERE merchant_id = #{merchantId}
+    </select>
+
+
 </mapper>

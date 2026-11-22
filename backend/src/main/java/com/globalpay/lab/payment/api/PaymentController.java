@@ -2,6 +2,7 @@ package com.globalpay.lab.payment.api;
 
 import com.globalpay.lab.common.api.Response;
 import com.globalpay.lab.payment.api.dto.CreatePaymentRequest;
+import com.globalpay.lab.payment.api.dto.PaymentPageResponse;
 import com.globalpay.lab.payment.api.dto.PaymentResponse;
 import com.globalpay.lab.payment.application.PaymentService;
 import com.globalpay.lab.payment.domain.PaymentIntent;
@@ -63,5 +64,18 @@ public class PaymentController {
 
         return Response.success(PaymentResponse.from(payment));
     }
+
+
+    @GetMapping
+    public Response<PaymentPageResponse> listPayments(
+            @AuthenticationPrincipal UUID merchantId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        return Response.success(
+                paymentService.listPayments(merchantId, page, size)
+        );
+    }
+
 }
 
